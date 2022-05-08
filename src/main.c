@@ -61,8 +61,8 @@ static esp_timer_handle_t tuner_motor_on_timer;
 static uint16_t config_duty_cycle = 0.0;
 static bool config_a = false;
 static bool config_b = false;
-static bool config_interval_on = 0;
-static bool config_interval_off = 0;
+static uint32_t config_interval_on = 0;
+static uint32_t config_interval_off = 0;
 
 void initialize_motor()
 {
