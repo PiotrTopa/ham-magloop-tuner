@@ -30,8 +30,8 @@
 
 static const char *TAG = "RF_Tuner";
 
-#define EXAMPLE_ESP_WIFI_SSID "UPCF75A2DB-2G"
-#define EXAMPLE_ESP_WIFI_PASS "dmthyzh7mGte"
+#define EXAMPLE_ESP_WIFI_SSID "your-wifi-ssid"
+#define EXAMPLE_ESP_WIFI_PASS "your-wifi-pass"
 #define EXAMPLE_ESP_MAXIMUM_RETRY 10
 #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_PSK
 
