@@ -71,10 +71,9 @@
         url: "/tuner/start",
         data: control,
         success: function (response) {
-          console.log("succes start");
         },
         error: function (xhr) {
-          console.log("error start");
+          console.log("Error on starting motor");
         }
       });
     }
@@ -83,21 +82,23 @@
       $.ajax({
         url: "/tuner/stop",
         success: function (response) {
-          console.log("succes stop");
         },
         error: function (xhr) {
-          console.log("error stop");
+          console.log("Error on stopping motor");
         }
-      });    }
+      });
+    }
 
     $(function () {
       $(".tuner-ctrl")
-        .mousedown(function () {
+        .on("mousedown touchstart", function () {
           const control = getControlls($(this).attr('tuner'));
           tunerStart(control);
+          return false;
         })
-        .mouseup(function () {
+        .on("mouseup touchend", function () {
           tunerStop();
+          return false;
         });
     });
   </script>
