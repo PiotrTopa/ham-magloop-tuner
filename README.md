@@ -4,6 +4,6 @@ Small magnetic loop antenna tuner.
 Quick and dirty implementation of remote tuning for MagLoop capacitor.
 
 - HTTP server
-- Bootstrap + jQuery frontend served from spiffs file
+- Bootstrap + jQuery frontend served from spiffs file (looks kinda nice)
 - Backend API (restFUL... a bit)
 - PWM + ON/OFF timers for precise brush motor controll (old Tower 9g servo)

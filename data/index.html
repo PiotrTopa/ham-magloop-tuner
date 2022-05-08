@@ -30,12 +30,14 @@
   <div class="tab-content" id="myTabContent">
     <div class="tab-pane fade show active" id="tuner" role="tabpanel" aria-labelledby="home-tab">
       <div class="btn-group" role="group" aria-label="Tuning">
+        <button type="button" tuner="rrrr" class="tuner-ctrl btn btn-outline-primary">&lt;&lt;&lt;&lt;</button>
         <button type="button" tuner="rrr" class="tuner-ctrl btn btn-outline-primary">&lt;&lt;&lt;</button>
         <button type="button" tuner="rr" class="tuner-ctrl btn btn-outline-primary">&lt;&lt;</button>
         <button type="button" tuner="r" class="tuner-ctrl btn btn-outline-primary">&lt;</button>
-        <button type="button" tuner="fff" class="tuner-ctrl btn btn-outline-primary">&gt;</button>
+        <button type="button" tuner="f" class="tuner-ctrl btn btn-outline-primary">&gt;</button>
         <button type="button" tuner="ff" class="tuner-ctrl btn btn-outline-primary">&gt;&gt;</button>
-        <button type="button" tuner="f" class="tuner-ctrl btn btn-outline-primary">&gt;&gt;&gt;</button>
+        <button type="button" tuner="fff" class="tuner-ctrl btn btn-outline-primary">&gt;&gt;&gt;</button>
+        <button type="button" tuner="ffff" class="tuner-ctrl btn btn-outline-primary">&gt;&gt;&gt;&gt;</button>
       </div>
     </div>
     <div class="tab-pane fade" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">...</div>
@@ -52,12 +54,14 @@
   <script>
     function getControlls(ctrl) {
       switch (ctrl) {
-        case 'rrr': return ({ duty: 1.0, a: true, b: false, intervalOn: 100, intervalOff: 100 });
-        case 'rr': return ({ duty: 1.0, a: true, b: false, intervalOn: 30, intervalOff: 100 });
-        case 'r': return ({ duty: 1.0, a: true, b: false, intervalOn: 3, intervalOff: 100 });
-        case 'f': return ({ duty: 1.0, a: false, b: true, intervalOn: 100, intervalOff: 100 });
-        case 'ff': return ({ duty: 1.0, a: false, b: true, intervalOn: 30, intervalOff: 100 });
-        case 'fff': return ({ duty: 1.0, a: false, b: true, intervalOn: 3, intervalOff: 100 });
+        case 'rrrr': return ({ duty: 1.0, a: true, b: false, intervalOn: 100, intervalOff: 1 });
+        case 'rrr': return ({ duty: 1.0, a: true, b: false, intervalOn: 30, intervalOff: 50 });
+        case 'rr': return ({ duty: 1.0, a: true, b: false, intervalOn: 10, intervalOff: 50 });
+        case 'r': return ({ duty: 1.0, a: true, b: false, intervalOn: 4, intervalOff: 100 });
+        case 'f': return ({ duty: 1.0, a: false, b: true, intervalOn: 4, intervalOff: 100 });
+        case 'ff': return ({ duty: 1.0, a: false, b: true, intervalOn: 10, intervalOff: 50 });
+        case 'fff': return ({ duty: 1.0, a: false, b: true, intervalOn: 30, intervalOff: 50 });
+        case 'ffff': return ({ duty: 1.0, a: false, b: true, intervalOn: 100, intervalOff: 1 });
         default: return ({ duty: 0.0, a: true, b: true, intervalOn: 100, intervalOff: 100 });
       }
     }
