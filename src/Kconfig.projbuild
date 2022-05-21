@@ -1,0 +1,14 @@
+  
+menu "Ham Radio Toolkit"
+
+    config WIFI_SSID
+        string
+        prompt "SSID of WiFi AP to connect"
+        default your-wifi-ssid
+
+    config WIFI_PASS
+        string
+        prompt "Password for WiFi AP to connect"
+        default your-wifi-pass
+        
+endmenu
