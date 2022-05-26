@@ -129,8 +129,8 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # Ham Radio Toolkit
 #
-CONFIG_WIFI_SSID="UPCF75A2DB-2G"
-CONFIG_WIFI_PASS="dmthyzh7mGte"
+CONFIG_WIFI_SSID="inward-iot"
+CONFIG_WIFI_PASS="inwarder"
 # end of Ham Radio Toolkit
 
 #

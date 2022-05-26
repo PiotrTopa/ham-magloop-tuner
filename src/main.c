@@ -46,23 +46,17 @@ static const char *TAG = "RF_Tuner";
 #define TUNER_MOTOR_PWM_OUTPUT_IO (5) // Define the output GPIO
 #define TUNER_MOTOR_PWM_CHANNEL LEDC_CHANNEL_0
 #define TUNER_MOTOR_PWM_DUTY_RES LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
-#define TUNER_MOTOR_PWM_FREQUENCY (5000)           // Frequency in Hertz. Set frequency at 5 kHz
+#define TUNER_MOTOR_PWM_FREQUENCY (20)           // Frequency in Hertz. Set frequency at 5 kHz
 #define TUNER_MOTOR_CONTROL_A_IO (16)
 #define TUNER_MOTOR_CONTROL_B_IO (17)
 #define TUNER_MOTOR_CONTROL_PIN_SEL ((1ULL << TUNER_MOTOR_CONTROL_A_IO) | (1ULL << TUNER_MOTOR_CONTROL_B_IO))
-void configure_tuner_motor(float duty, bool param_a, bool param_b, uint32_t interval_on, uint32_t interval_off);
-void tuner_motor_off_timer_callback(void *arg);
-void tuner_motor_on_timer_callback(void *arg);
+void configure_tuner_motor(float duty, bool param_a, bool param_b);
 
 static EventGroupHandle_t wifi_event_group;
 static int wifi_retry_num = 0;
-static esp_timer_handle_t tuner_motor_off_timer;
-static esp_timer_handle_t tuner_motor_on_timer;
 static uint16_t config_duty_cycle = 0.0;
 static bool config_a = false;
 static bool config_b = false;
-static uint32_t config_interval_on = 0;
-static uint32_t config_interval_off = 0;
 
 void initialize_motor()
 {
@@ -94,41 +88,11 @@ void initialize_motor()
     gpio_config(&io_conf);
 }
 
-static void init_tuner_motor_timers()
-{
-    const esp_timer_create_args_t tuner_motor_off_timer_args = {
-        .callback = &tuner_motor_off_timer_callback,
-        .name = "tuner_motor_off_timer"};
-
-    ESP_ERROR_CHECK(esp_timer_create(&tuner_motor_off_timer_args, &tuner_motor_off_timer));
-
-    const esp_timer_create_args_t tuner_motor_on_timer_args = {
-        .callback = &tuner_motor_on_timer_callback,
-        .name = "tuner_motor_on_timer"};
-
-    ESP_ERROR_CHECK(esp_timer_create(&tuner_motor_on_timer_args, &tuner_motor_on_timer));
-}
-
-void configure_tuner_motor(float duty, bool param_a, bool param_b, uint32_t interval_on, uint32_t interval_off)
+void configure_tuner_motor(float duty, bool param_a, bool param_b)
 {
     config_duty_cycle = (uint16_t)(8191.f * duty);
     config_a = param_a;
     config_b = param_b;
-    config_interval_on = interval_on;
-    config_interval_off = interval_off;
-}
-
-void stop_tuner_motor_timers()
-{
-    if (esp_timer_is_active(tuner_motor_on_timer))
-    {
-        esp_timer_stop(tuner_motor_on_timer);
-    }
-
-    if (esp_timer_is_active(tuner_motor_off_timer))
-    {
-        esp_timer_stop(tuner_motor_off_timer);
-    }
 }
 
 void tuner_motor_on()
@@ -137,10 +101,6 @@ void tuner_motor_on()
     ESP_ERROR_CHECK(ledc_update_duty(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL));
     gpio_set_level(TUNER_MOTOR_CONTROL_A_IO, config_a);
     gpio_set_level(TUNER_MOTOR_CONTROL_B_IO, config_b);
-    if (config_interval_on > 0)
-    {
-        ESP_ERROR_CHECK(esp_timer_start_once(tuner_motor_off_timer, 1000 * config_interval_on));
-    }
 }
 
 void tuner_motor_off()
@@ -149,34 +109,6 @@ void tuner_motor_off()
     ESP_ERROR_CHECK(ledc_update_duty(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL));
     gpio_set_level(TUNER_MOTOR_CONTROL_A_IO, true);
     gpio_set_level(TUNER_MOTOR_CONTROL_B_IO, true);
-    if (config_interval_off > 0)
-    {
-        ESP_ERROR_CHECK(esp_timer_start_once(tuner_motor_on_timer, 1000 * config_interval_off));
-    }
-}
-
-void tuner_motor_start()
-{
-    stop_tuner_motor_timers();
-    tuner_motor_on();
-}
-
-void tuner_motor_stop()
-{
-    stop_tuner_motor_timers();
-    config_interval_off = 0;
-    config_interval_on = 0;
-    tuner_motor_off();
-}
-
-void tuner_motor_off_timer_callback(void *arg)
-{
-    tuner_motor_off();
-}
-
-void tuner_motor_on_timer_callback(void *arg)
-{
-    tuner_motor_on();
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -315,8 +247,6 @@ static esp_err_t tuner_start_get_handler(httpd_req_t *req)
     float duty = 0.0;
     bool param_a = false;
     bool param_b = false;
-    uint32_t interval_on = 0;
-    uint32_t interval_off = 0;
 
     /* Read URL query string length and allocate memory for length + 1,
      * extra byte for null termination */
@@ -333,14 +263,6 @@ static esp_err_t tuner_start_get_handler(httpd_req_t *req)
             {
                 duty = atof(param);
             }
-            if (httpd_query_key_value(buf, "intervalOn", param, sizeof(param)) == ESP_OK)
-            {
-                interval_on = atoi(param);
-            }
-            if (httpd_query_key_value(buf, "intervalOff", param, sizeof(param)) == ESP_OK)
-            {
-                interval_off = atoi(param);
-            }            
             if (httpd_query_key_value(buf, "a", param, sizeof(param)) == ESP_OK)
             {
                 param_a = strcmp("true", param) == 0;
@@ -353,8 +275,8 @@ static esp_err_t tuner_start_get_handler(httpd_req_t *req)
         free(buf);
     }
 
-    configure_tuner_motor(duty, param_a, param_b, interval_on, interval_off);
-    tuner_motor_start();
+    configure_tuner_motor(duty, param_a, param_b);
+    tuner_motor_on();
     httpd_resp_send(req, "{success: \"true\"}", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
@@ -368,7 +290,7 @@ static const httpd_uri_t tuner_start_get_handler_uri = {
 /* An HTTP GET handler */
 static esp_err_t tuner_stop_get_handler(httpd_req_t *req)
 {
-    tuner_motor_stop();
+    tuner_motor_off();
     httpd_resp_send(req, "{success: \"true\"}", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
@@ -542,7 +464,6 @@ void app_main(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
-    init_tuner_motor_timers();
 
     /* Register event handlers to stop the server when Wi-Fi or Ethernet is disconnected,
      * and re-start it upon connection.

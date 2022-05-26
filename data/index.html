@@ -54,15 +54,15 @@
   <script>
     function getControlls(ctrl) {
       switch (ctrl) {
-        case 'rrrr': return ({ duty: 1.0, a: true, b: false, intervalOn: 100, intervalOff: 1 });
-        case 'rrr': return ({ duty: 1.0, a: true, b: false, intervalOn: 30, intervalOff: 50 });
-        case 'rr': return ({ duty: 1.0, a: true, b: false, intervalOn: 10, intervalOff: 50 });
-        case 'r': return ({ duty: 1.0, a: true, b: false, intervalOn: 4, intervalOff: 100 });
-        case 'f': return ({ duty: 1.0, a: false, b: true, intervalOn: 4, intervalOff: 100 });
-        case 'ff': return ({ duty: 1.0, a: false, b: true, intervalOn: 10, intervalOff: 50 });
-        case 'fff': return ({ duty: 1.0, a: false, b: true, intervalOn: 30, intervalOff: 50 });
-        case 'ffff': return ({ duty: 1.0, a: false, b: true, intervalOn: 100, intervalOff: 1 });
-        default: return ({ duty: 0.0, a: true, b: true, intervalOn: 100, intervalOff: 100 });
+        case 'rrrr': return ({ duty: 1.0, a: true, b: false });
+        case 'rrr': return ({ duty: 0.5, a: true, b: false });
+        case 'rr': return ({ duty: 0.2, a: true, b: false });
+        case 'r': return ({ duty: 0.1, a: true, b: false });
+        case 'f': return ({ duty: 0.1, a: false, b: true });
+        case 'ff': return ({ duty: 0.2, a: false, b: true });
+        case 'fff': return ({ duty: 0.5, a: false, b: true });
+        case 'ffff': return ({ duty: 1.0, a: false, b: true });
+        default: return ({ duty: 0.0, a: true, b: true });
       }
     }
 
