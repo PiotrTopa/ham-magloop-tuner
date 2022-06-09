@@ -52,22 +52,47 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
   <script>
+    (function($) {
+      var ajaxQueue = $({});
+
+      $.ajaxQueue = function(ajaxOpts) {
+        const shadowedComplete = ajaxOpts.complete;
+        const shadowedError = ajaxOpts.error;
+        ajaxQueue.queue(function(next) {
+          ajaxOpts.complete = function() {
+            if(shadowedComplete) {
+              shadowedComplete.apply(this, arguments);
+              next();
+            }
+          }
+          ajaxOpts.error = function() {
+            if(shadowedError) {
+              shadowedError.apply(this, arguments);
+              next();
+            }
+          }
+          $.ajax(ajaxOpts);
+        });
+      }
+    })(jQuery);
+
     function getControlls(ctrl) {
       switch (ctrl) {
-        case 'rrrr': return ({ duty: 1.0, a: true, b: false });
-        case 'rrr': return ({ duty: 0.5, a: true, b: false });
-        case 'rr': return ({ duty: 0.2, a: true, b: false });
-        case 'r': return ({ duty: 0.1, a: true, b: false });
-        case 'f': return ({ duty: 0.1, a: false, b: true });
-        case 'ff': return ({ duty: 0.2, a: false, b: true });
-        case 'fff': return ({ duty: 0.5, a: false, b: true });
-        case 'ffff': return ({ duty: 1.0, a: false, b: true });
+        case 'rrrr': return ({ duty: 0.5, a: true, b: false });
+        case 'rrr': return ({ duty: 0.2, a: true, b: false });
+        case 'rr': return ({ duty: 0.1, a: true, b: false });
+        case 'r': return ({ duty: 0.05, a: true, b: false });
+        case 'f': return ({ duty: 0.05, a: false, b: true });
+        case 'ff': return ({ duty: 0.1, a: false, b: true });
+        case 'fff': return ({ duty: 0.2, a: false, b: true });
+        case 'ffff': return ({ duty: 0.5, a: false, b: true });
         default: return ({ duty: 0.0, a: true, b: true });
       }
     }
 
     function tunerStart(control) {
-      $.ajax({
+      console.log("tunerStart");
+      $.ajaxQueue({
         url: "/tuner/start",
         data: control,
         success: function (response) {
@@ -79,7 +104,7 @@
     }
 
     function tunerStop() {
-      $.ajax({
+      $.ajaxQueue({
         url: "/tuner/stop",
         success: function (response) {
         },
@@ -96,7 +121,7 @@
           tunerStart(control);
           return false;
         })
-        .on("mouseup touchend", function () {
+        .on("mouseup touchend touchcancel", function () {
           tunerStop();
           return false;
         });

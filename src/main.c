@@ -17,6 +17,7 @@
 #include <esp_log.h>
 #include <esp_system.h>
 #include "esp_timer.h"
+#include "esp_pm.h"
 
 #include <nvs_flash.h>
 #include <sys/param.h>
@@ -30,9 +31,13 @@
 
 static const char *TAG = "RF_Tuner";
 
+#ifdef POWER_SAVING_ENABLED
+esp_pm_lock_handle_t nosleep_handle = 0;
+#endif
+
 #define EXAMPLE_ESP_WIFI_SSID CONFIG_WIFI_SSID
 #define EXAMPLE_ESP_WIFI_PASS CONFIG_WIFI_PASS
-#define EXAMPLE_ESP_MAXIMUM_RETRY 10
+#define EXAMPLE_ESP_MAXIMUM_RETRY 0
 #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_PSK
 
 /* The event group allows multiple bits for each event, but we only care about two events:
@@ -43,12 +48,12 @@ static const char *TAG = "RF_Tuner";
 
 #define TUNER_MOTOR_PWM_TIMER LEDC_TIMER_0
 #define TUNER_MOTOR_PWM_MODE LEDC_LOW_SPEED_MODE
-#define TUNER_MOTOR_PWM_OUTPUT_IO (5) // Define the output GPIO
+#define TUNER_MOTOR_PWM_OUTPUT_IO (21) // Define the output GPIO
 #define TUNER_MOTOR_PWM_CHANNEL LEDC_CHANNEL_0
 #define TUNER_MOTOR_PWM_DUTY_RES LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
 #define TUNER_MOTOR_PWM_FREQUENCY (20)           // Frequency in Hertz. Set frequency at 5 kHz
-#define TUNER_MOTOR_CONTROL_A_IO (16)
-#define TUNER_MOTOR_CONTROL_B_IO (17)
+#define TUNER_MOTOR_CONTROL_A_IO (22)
+#define TUNER_MOTOR_CONTROL_B_IO (23)
 #define TUNER_MOTOR_CONTROL_PIN_SEL ((1ULL << TUNER_MOTOR_CONTROL_A_IO) | (1ULL << TUNER_MOTOR_CONTROL_B_IO))
 void configure_tuner_motor(float duty, bool param_a, bool param_b);
 
@@ -97,18 +102,46 @@ void configure_tuner_motor(float duty, bool param_a, bool param_b)
 
 void tuner_motor_on()
 {
+    ESP_LOGI(TAG, "TUNER ON %d %d %d", config_duty_cycle, config_a, config_b);
+    //ledc_timer_resume(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL);
     ESP_ERROR_CHECK(ledc_set_duty(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL, config_duty_cycle));
     ESP_ERROR_CHECK(ledc_update_duty(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL));
+    
+    #ifdef POWER_SAVING_ENABLED
+    gpio_hold_dis(TUNER_MOTOR_CONTROL_A_IO);
+    gpio_hold_dis(TUNER_MOTOR_CONTROL_B_IO);
+    #endif
+
     gpio_set_level(TUNER_MOTOR_CONTROL_A_IO, config_a);
     gpio_set_level(TUNER_MOTOR_CONTROL_B_IO, config_b);
+    
+    #ifdef POWER_SAVING_ENABLED
+    gpio_hold_en(TUNER_MOTOR_CONTROL_A_IO);
+    gpio_hold_en(TUNER_MOTOR_CONTROL_B_IO);
+    ESP_ERROR_CHECK(esp_pm_lock_acquire(nosleep_handle));
+    #endif
 }
 
 void tuner_motor_off()
 {
+    ESP_LOGI(TAG, "TUNER OFF");
+    //ledc_timer_pause(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL);
     ESP_ERROR_CHECK(ledc_set_duty(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL, 0));
     ESP_ERROR_CHECK(ledc_update_duty(TUNER_MOTOR_PWM_MODE, TUNER_MOTOR_PWM_CHANNEL));
+    
+    #ifdef POWER_SAVING_ENABLED
+    gpio_hold_dis(TUNER_MOTOR_CONTROL_A_IO);
+    gpio_hold_dis(TUNER_MOTOR_CONTROL_B_IO);
+    #endif
+
     gpio_set_level(TUNER_MOTOR_CONTROL_A_IO, true);
     gpio_set_level(TUNER_MOTOR_CONTROL_B_IO, true);
+    
+    #ifdef POWER_SAVING_ENABLED
+    gpio_hold_en(TUNER_MOTOR_CONTROL_A_IO);
+    gpio_hold_en(TUNER_MOTOR_CONTROL_B_IO);
+    ESP_ERROR_CHECK(esp_pm_lock_release(nosleep_handle));
+    #endif
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -120,7 +153,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        if (wifi_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY)
+        if (EXAMPLE_ESP_MAXIMUM_RETRY == 0 || wifi_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY)
         {
             esp_wifi_connect();
             wifi_retry_num++;
@@ -174,11 +207,16 @@ void wifi_init_sta(void)
              * However these modes are deprecated and not advisable to be used. Incase your Access point
              * doesn't support WPA2, these mode can be enabled by commenting below line */
             .threshold.authmode = ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD,
+            .listen_interval = 5,
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    #ifdef POWER_SAVING_ENABLED
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MAX_MODEM));
+    #endif
+
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
@@ -298,7 +336,7 @@ static esp_err_t tuner_stop_get_handler(httpd_req_t *req)
 static const httpd_uri_t tuner_stop_get_handler_uri = {
     .uri = "/tuner/stop",
     .method = HTTP_GET,
-    .handler = tuner_start_get_handler,
+    .handler = tuner_stop_get_handler,
     .user_ctx = NULL};
 
 /* An HTTP POST handler */
@@ -461,6 +499,18 @@ void app_main(void)
 
     initialize_motor();
     mount_spiffs();
+
+    #ifdef POWER_SAVING_ENABLED
+    esp_pm_config_esp32_t pm_config = {
+        .max_freq_mhz = 240,
+        .min_freq_mhz = 160,
+        .light_sleep_enable = true,
+    };
+    ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
+    ESP_ERROR_CHECK(esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "nosleep", &nosleep_handle));
+    #endif
+    
+
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
